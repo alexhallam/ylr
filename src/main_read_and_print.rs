@@ -41,7 +41,6 @@ fn main() {
                 List(_) => "<list>".to_string(),
                 Date32 => "<date>".to_string(),
                 Timestamp(_, _) => "<ts>".to_string(),
-                Time32(_) => "<time>".to_string(),
                 _ => "<_>".to_string(),
             }
         })
@@ -130,13 +129,15 @@ fn main() {
     // convert reader to record batch
     let record_batch: RecordBatch = reader.next().unwrap().unwrap().clone();
 
+    dbg!(record_batch.clone());
+
     // get the number of columns in the record batch
     let cols: usize = record_batch.num_columns();
 
     // get the number of rows in the file
     let rows_in_file: usize = record_batch.num_rows() + 1;
 
-    let rows: usize = 25;
+    let rows: usize = 7;
 
     let is_force_all_rows = false;
 
