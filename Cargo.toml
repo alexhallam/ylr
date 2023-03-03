@@ -1,0 +1,21 @@
+[package]
+name = "pillar"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+arrow-csv = "33.0.0"
+arrow = "33.0.0"
+lazy_static = "1.4.0"
+regex = "1.5.4"
+atty = "0.2.14"
+calm_io = "0.1.1"
+console = "0.15.0"
+crossterm = "0.22.1"
+unicode-truncate = "0.2.0"
+csv = "1.2.0"
+owo-colors = "3.0.1"
+arrow-array = "34.0.0"
+chrono = "0.4.23"
