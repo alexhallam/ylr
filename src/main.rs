@@ -1,25 +1,31 @@
 // impliment a format for Record batch
-use arrow::array::Int32Array;
+use arrow::array::Int64Array;
 use arrow::array::{Array, StringArray};
 use arrow::compute::cast;
 use arrow::datatypes::DataType::{Boolean, Date32, Float64, Int64, List, Time32, Timestamp, Utf8};
 use arrow::datatypes::{DataType, Field, Schema};
 use arrow::record_batch::RecordBatch;
+use arrow_csv::reader;
 use core::str;
 use crossterm::terminal::size;
 use lazy_static::lazy_static;
 use owo_colors::OwoColorize;
+use parquet::file::reader::{FileReader, SerializedFileReader};
 use regex::Regex;
 use std::fmt;
+use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
 use std::sync::Arc;
 use unicode_truncate::UnicodeTruncateStr;
-struct Tibble {
+struct TibblePath {
+    path: String,
+}
+struct TibbleRecordBatch {
     table: RecordBatch,
 }
 
-impl fmt::Display for Tibble {
+impl fmt::Display for TibbleRecordBatch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let term_tuple: (u16, u16) = size().unwrap();
         let is_no_dimensions = false;
@@ -179,138 +185,6 @@ impl fmt::Display for Tibble {
         } else {
             get_num_cols_to_print(cols, vf_mut.clone(), term_tuple)
         };
-
-        // // data_types
-        // let _ = match write!("{: >6}  ", "") {
-        //     Ok(_) => Ok(()),
-        //     Err(e) => match e.kind() {
-        //         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //         _ => Err(e),
-        //     },
-        // };
-        // for col in 0..num_cols_to_print {
-        //     let text = vp[1].get(col).unwrap().to_string();
-        //     if is_tty || is_force_color {
-        //         let _ = match write!(
-        //             "{}",
-        //             text.truecolor(meta_color[0], meta_color[1], meta_color[2])
-        //                 .bold()
-        //         ) {
-        //             Ok(_) => Ok(()),
-        //             Err(e) => match e.kind() {
-        //                 std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                 _ => Err(e),
-        //             },
-        //         };
-        //     } else {
-        //         let _ = match write!("{}", text) {
-        //             Ok(_) => Ok(()),
-        //             Err(e) => match e.kind() {
-        //                 std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                 _ => Err(e),
-        //             },
-        //         };
-        //     }
-        // }
-
-        // //
-        // let _ = match stdoutln!() {
-        //     Ok(_) => Ok(()),
-        //     Err(e) => match e.kind() {
-        //         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //         _ => Err(e),
-        //     },
-        // };
-
-        // main body rows after the column names
-        // vp.iter()
-        //     .enumerate()
-        //     .take(rows)
-        //     .skip(2)
-        //     .for_each(|(row_index, row)| {
-        //         if is_tty || is_force_color {
-        //             if is_no_row_numbering {
-        //                 let _ = match write!(
-        //                     "{: >6}  ",
-        //                     "".truecolor(meta_color[0], meta_color[1], meta_color[2]) // this prints the row number
-        //                 ) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             } else {
-        //                 let _ = match write!(
-        //                     "{: >6}  ",
-        //                     (row_index - 1).truecolor(meta_color[0], meta_color[1], meta_color[2]) // this prints the row number
-        //                 ) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             }
-        //         } else if is_no_row_numbering {
-        //             let _ = match write!(
-        //                 "{: >6}  ",
-        //                 "" // this prints the row number
-        //             ) {
-        //                 Ok(_) => Ok(()),
-        //                 Err(e) => match e.kind() {
-        //                     std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                     _ => Err(e),
-        //                 },
-        //             };
-        //         } else {
-        //             let _ = match write!(
-        //                 "{: >6}  ",
-        //                 "" // this prints the row number
-        //             ) {
-        //                 Ok(_) => Ok(()),
-        //                 Err(e) => match e.kind() {
-        //                     std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                     _ => Err(e),
-        //                 },
-        //             };
-        //         }
-        //         row.iter().take(num_cols_to_print).for_each(|col| {
-        //             if is_tty || is_force_color {
-        //                 let _ = match write!(
-        //                     "{}",
-        //                     if is_na_string_padded(col.clone()) {
-        //                         col.truecolor(na_color[0], na_color[1], na_color[2])
-        //                     } else if is_number(col.clone()) && is_negative_number(col.clone()) {
-        //                         col.truecolor(neg_num_color[0], neg_num_color[1], neg_num_color[2])
-        //                     } else {
-        //                         col.truecolor(std_color[0], std_color[1], std_color[2])
-        //                     }
-        //                 ) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             } else {
-        //                 let _ = match write!("{}", col) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             }
-        //         });
-        //         let _ = match stdoutln!() {
-        //             Ok(_) => Ok(()),
-        //             Err(e) => match e.kind() {
-        //                 std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                 _ => Err(e),
-        //             },
-        //         };
-        //     });
 
         pub struct DecimalSplits {
             pub val: f64,
@@ -643,129 +517,14 @@ impl fmt::Display for Tibble {
                 .collect()
         }
 
-        // // footer
-        // // additional row info
-        // if rows_remaining > 0 || (cols - num_cols_to_print) > 0 {
-        //     let _ = match write!("{: >6}  ", "") {
-        //         Ok(_) => Ok(()),
-        //         Err(e) => match e.kind() {
-        //             std::io::ErrorKind::BrokenPipe => Ok(()),
-        //             _ => Err(e),
-        //         },
-        //     };
-        //     if is_tty || is_force_color {
-        //         let _ = match write!(
-        //             "{}",
-        //             row_remaining_text.truecolor(meta_color[0], meta_color[1], meta_color[2])
-        //         ) {
-        //             Ok(_) => Ok(()),
-        //             Err(e) => match e.kind() {
-        //                 std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                 _ => Err(e),
-        //             },
-        //         };
-        //     } else {
-        //         let _ = match write!("{}", row_remaining_text) {
-        //             Ok(_) => Ok(()),
-        //             Err(e) => match e.kind() {
-        //                 std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                 _ => Err(e),
-        //             },
-        //         };
-        //     }
-        //     let extra_cols_to_mention = num_cols_to_print;
-        //     let remainder_cols = cols - extra_cols_to_mention;
-        //     if extra_cols_to_mention < cols {
-        //         let meta_text_and = "and";
-        //         let meta_text_var = "more variables";
-        //         let meta_text_comma = ",";
-        //         let meta_text_colon = ":";
-        //         if is_tty || is_force_color {
-        //             let _ = match write!(
-        //                 " {} {} {}{}",
-        //                 meta_text_and.truecolor(meta_color[0], meta_color[1], meta_color[2]),
-        //                 remainder_cols.truecolor(meta_color[0], meta_color[1], meta_color[2]),
-        //                 meta_text_var.truecolor(meta_color[0], meta_color[1], meta_color[2]),
-        //                 meta_text_colon.truecolor(meta_color[0], meta_color[1], meta_color[2])
-        //             ) {
-        //                 Ok(_) => Ok(()),
-        //                 Err(e) => match e.kind() {
-        //                     std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                     _ => Err(e),
-        //                 },
-        //             };
-        //         } else {
-        //             let _ = match write!(
-        //                 " {} {} {}{}",
-        //                 meta_text_and,
-        //                 remainder_cols, meta_text_var, meta_text_colon
-        //             ) {
-        //                 Ok(_) => Ok(()),
-        //                 Err(e) => match e.kind() {
-        //                     std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                     _ => Err(e),
-        //                 },
-        //             };
-        //         }
-        //         for col in extra_cols_to_mention..cols {
-        //             let text = column_names[col].clone();
-        //             if is_tty || is_force_color {
-        //                 let _ = match write!(
-        //                     " {}",
-        //                     text.truecolor(meta_color[0], meta_color[1], meta_color[2])
-        //                 ) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             } else {
-        //                 let _ = match write!(" {}", text) {
-        //                     Ok(_) => Ok(()),
-        //                     Err(e) => match e.kind() {
-        //                         std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                         _ => Err(e),
-        //                     },
-        //                 };
-        //             }
-
-        //             // The last column mentioned in foot should not be followed by a comma
-        //             if col + 1 < cols {
-        //                 if is_tty || is_force_color {
-        //                     let _ = match write!(
-        //                         "{}",
-        //                         meta_text_comma.truecolor(
-        //                             meta_color[0],
-        //                             meta_color[1],
-        //                             meta_color[2]
-        //                         )
-        //                     ) {
-        //                         Ok(_) => Ok(()),
-        //                         Err(e) => match e.kind() {
-        //                             std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                             _ => Err(e),
-        //                         },
-        //                     };
-        //                 } else {
-        //                     let _ = match write!("{}", meta_text_comma) {
-        //                         Ok(_) => Ok(()),
-        //                         Err(e) => match e.kind() {
-        //                             std::io::ErrorKind::BrokenPipe => Ok(()),
-        //                             _ => Err(e),
-        //                         },
-        //                     };
-        //                 }
-        //             }
-        //         } // end extra cols mentioned in footer
-        //     }
-        // }
-        // println!();
-
         //=======ylr dim: Row x Col=======
-        let meta_text: &str = "ylr dim:";
+        let _ = match writeln!(f) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        };
+        let meta_text: &str = "🐶 A tibble dim:";
         let div: &str = "x";
-        let _ = match write!(f, "{: >6}  ", "") {
+        let _ = match write!(f, "{: >3}  ", "") {
             Ok(_) => Ok(()),
             Err(x) => Err(x),
         };
@@ -906,19 +665,139 @@ impl fmt::Display for Tibble {
                     Err(e) => Err(e),
                 };
             });
+        //===footer===
+        if rows_remaining > 0 || (cols - num_cols_to_print) > 0 {
+            let _ = match write!(f, "{: >6}  ", "") {
+                Ok(_) => Ok(()),
+                Err(e) => Err(e),
+            };
+            if is_tty || is_force_color {
+                let _ = match write!(
+                    f,
+                    "{}",
+                    row_remaining_text.truecolor(meta_color[0], meta_color[1], meta_color[2])
+                ) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e),
+                };
+            } else {
+                let _ = match write!(f, "{}", row_remaining_text) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(e),
+                };
+            }
+            let extra_cols_to_mention = num_cols_to_print;
+            let remainder_cols = cols - extra_cols_to_mention;
+            if extra_cols_to_mention < cols {
+                let meta_text_and = "and";
+                let meta_text_var = "more variables";
+                let meta_text_comma = ",";
+                let meta_text_colon = ":";
+                if is_tty || is_force_color {
+                    let _ = match write!(
+                        f,
+                        " {} {} {}{}",
+                        meta_text_and.truecolor(meta_color[0], meta_color[1], meta_color[2]),
+                        remainder_cols.truecolor(meta_color[0], meta_color[1], meta_color[2]),
+                        meta_text_var.truecolor(meta_color[0], meta_color[1], meta_color[2]),
+                        meta_text_colon.truecolor(meta_color[0], meta_color[1], meta_color[2])
+                    ) {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(e),
+                    };
+                } else {
+                    let _ = match write!(
+                        f,
+                        " {} {} {}{}",
+                        meta_text_and, remainder_cols, meta_text_var, meta_text_colon
+                    ) {
+                        Ok(_) => Ok(()),
+                        Err(e) => Err(e),
+                    };
+                }
+                for col in extra_cols_to_mention..cols {
+                    let text = column_names[col].clone();
+                    if is_tty || is_force_color {
+                        let _ = match write!(
+                            f,
+                            " {}",
+                            text.truecolor(meta_color[0], meta_color[1], meta_color[2])
+                        ) {
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(e),
+                        };
+                    } else {
+                        let _ = match write!(f, " {}", text) {
+                            Ok(_) => Ok(()),
+                            Err(e) => Err(e),
+                        };
+                    }
+
+                    // The last column mentioned in foot should not be followed by a comma
+                    if col + 1 < cols {
+                        if is_tty || is_force_color {
+                            let _ = match write!(
+                                f,
+                                "{}",
+                                meta_text_comma.truecolor(
+                                    meta_color[0],
+                                    meta_color[1],
+                                    meta_color[2]
+                                )
+                            ) {
+                                Ok(_) => Ok(()),
+                                Err(e) => Err(e),
+                            };
+                        } else {
+                            let _ = match write!(f, "{}", meta_text_comma) {
+                                Ok(_) => Ok(()),
+                                Err(e) => Err(e),
+                            };
+                        }
+                    }
+                } // end extra cols mentioned in footer
+            }
+        }
+        let _ = match writeln!(f) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        };
         Ok(())
     }
 }
 fn main() {
-    let id_array = Int32Array::from(vec![
+    //===create a record batch===
+    let id_array = Int64Array::from(vec![
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
         26, 27, 28,
     ]);
-    let schema = Schema::new(vec![Field::new("id", DataType::Int32, false)]);
-
-    let batch = RecordBatch::try_new(Arc::new(schema), vec![Arc::new(id_array)]).unwrap();
-
-    let tibble = Tibble { table: batch };
-
+    let schema = Schema::new(vec![Field::new("id", DataType::Int64, false)]);
+    let record_batch = RecordBatch::try_new(Arc::new(schema), vec![Arc::new(id_array)]).unwrap();
+    let tibble = TibbleRecordBatch {
+        table: record_batch,
+    };
     print!("{}", tibble);
+
+    //===read csv===
+    let path = "data/gafa_stock.csv".to_owned();
+    let schema = reader::infer_schema_from_files(&[path.clone()], 44, Some(1000), true);
+    let schema_data_types = reader::infer_schema_from_files(&[path.clone()], 44, Some(1000), true);
+    let file = File::open(path).unwrap();
+    let mut reader = reader::Reader::new(
+        file,
+        Arc::new(schema.expect("Schema should be infered")),
+        true,
+        Some(44),
+        1024,
+        None,
+        None,
+        None,
+    );
+    let record_batch: RecordBatch = reader.next().unwrap().unwrap().clone();
+    let tibble = TibbleRecordBatch {
+        table: record_batch,
+    };
+    print!("{}", tibble);
+
+    //===read parquet===
 }

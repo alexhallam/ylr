@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 arrow-csv = "33.0.0"
-arrow = "33.0.0"
+arrow =  "33.0.0"
 lazy_static = "1.4.0"
 regex = "1.5.4"
 atty = "0.2.14"
@@ -19,3 +19,6 @@ csv = "1.2.0"
 owo-colors = "3.0.1"
 arrow-array = "34.0.0"
 chrono = "0.4.23"
+arrow2 = { version = "0.15.0",features = ["io_ipc"]}
+arrow-flight = "34.0.0"
+parquet = "34.0.0"
