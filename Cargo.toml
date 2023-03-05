@@ -22,3 +22,6 @@ chrono = "0.4.23"
 arrow2 = { version = "0.15.0",features = ["io_ipc"]}
 arrow-flight = "34.0.0"
 parquet = "34.0.0"
+md5 = "0.7.0"
+tar = "0.4.38"
+tempdir = "0.3.7"
