@@ -2,14 +2,11 @@
 <p align="center">As in Ol' Yeller</p>
 <p align="center">Data's Best Friend</p>
 
-
-
-
 <p align="center">
-  <img src="./assets/ylr_logo.png" alt="Logo" width="200" height="200">
+  <img src="https://storage.googleapis.com/data_xvzf/ylr_small_docs_logo.png" alt="Logo" width="100" height="100">
 </p>
 
-# What is this
+# What is This
 
 I dplyr-like language of data manipulation, which uses arrow as its backend and parquet as its storage format. It is designed to be a lightweight, fast, and fun.
 
