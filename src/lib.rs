@@ -20,6 +20,7 @@ use regex::Regex;
 use std::cmp::min;
 use std::cmp::Ordering;
 use std::fmt;
+use std::fs::remove_file;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
@@ -33,12 +34,13 @@ use arrow::datatypes::Field;
 use arrow::datatypes::Schema;
 // import DataType
 use arrow::datatypes::DataType;
+use std::ffi::OsStr;
+use std::path::Path;
+use tempfile::TempDir;
 use url::Url;
 #[tokio::main]
-async fn download_data(url_path: &str) {
-    let dir = tempdir().unwrap();
-    let tmp_file_path = dir.path().join("tmp_file");
-    let mut tmp_file = File::create("tmpzzz.csv").expect("failed to create temp file");
+async fn download_data(url_path: &str, temp_file: PathBuf) {
+    let mut tmp_file = File::create(temp_file).expect("failed to create temp file");
     let url = url_path;
     let response = reqwest::get(url);
     let mut stream = response.await.expect("error on streaming").bytes_stream();
@@ -67,7 +69,7 @@ async fn download_data(url_path: &str) {
         downloaded = new;
         pb.set_position(new);
     }
-    pb.finish_with_message(format!("🐶 Success!"));
+    pb.finish_with_message(format!("🐶 Download Success!"));
 }
 
 mod pillar {
@@ -858,18 +860,29 @@ pub mod readr {
     pub fn read_delim(file: &str) -> PillarRecordBatch {
         // First download then read the file if there is a url in the file path
         let url_result = Url::parse(file);
-        let file_path: String = match url_result {
+        // make a temp dir
+        let temp_dir = TempDir::new().unwrap();
+        let tmp_file_path = temp_dir.path().join("tmp_ylr.csv");
+        let file_path = match url_result {
             Ok(url) => {
-                download_data(url.as_str());
-                "tmpzzz.csv".to_owned()
+                download_data(url.as_str(), tmp_file_path.clone());
+                tmp_file_path
             }
-            Err(e) => file.to_owned(),
+            Err(e) => Path::new(file).to_owned(),
         };
-        let path = file_path.clone();
-        let schema = reader::infer_schema_from_files(&[path.clone()], 44, Some(1000), true);
-        let schema_data_types =
-            reader::infer_schema_from_files(&[path.clone()], 44, Some(1000), true);
-        println!("path: {}", path);
+        let schema = reader::infer_schema_from_files(
+            &[file_path.to_str().unwrap().to_owned()],
+            44,
+            Some(1000),
+            true,
+        );
+        let schema_data_types = reader::infer_schema_from_files(
+            &[file_path.to_str().unwrap().to_owned()],
+            44,
+            Some(1000),
+            true,
+        );
+
         let file_open = File::open(file_path).unwrap();
         let mut reader = reader::Reader::new(
             file_open,
@@ -881,6 +894,7 @@ pub mod readr {
             None,
             None,
         );
+
         let record_batch: RecordBatch = reader.next().unwrap().unwrap().clone();
         let tibble = to_pillar(record_batch);
         tibble
