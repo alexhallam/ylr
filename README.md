@@ -267,3 +267,40 @@ I have made every effort possible to make the syntax in `ylr` index on `dplyr`. 
 | `dplyr` | `ylr`  |
 | ------- | ------ |
 | `NA`    | `Null` |
+
+
+# What is ylr ... again?
+
+There are examples of mixing good things and something good coming out and mixing good things and bad coming out. Time will tell how the chemistry works out.
+
+| good mix                    | bad mix                             |
+| --------------------------- | ----------------------------------- |
+| Peanut butter and chocolate | Fruit and cake (Jim Gaffigan et al) |
+
+That said here are some things I like from some of my favorite technologies.
+
+```
+                       +------+
+               duckdb. | OLAP |
+             SQLite .. +------+-+
+                    .. |Embedded|
+                    .. +---+----+
+                    .. |CLI|
+                    .. +---+----------+
+                    .. |Single File DB|
+GNU-R And Tidyverse... +--------------+-+
+                   ..  |Handful of types|
+                   .   +-----+----------+
+                   .   |Pipes|
+                   .   +-----+---------+
+                   .   |Tidyverse Verbs|
+                   .   +-------------+-+
+      Apache Arrow.    |Feather Files|
+                  .    +------------++
+                  .    |Arrow Memory|
+                  .    +------------+--+
+           Polars.     | Chunked Arrays|
+                 .     +---------------+-------+
+                 .     |Rust For Data Wrangling|
+                       +-----------------------+
+```

@@ -854,12 +854,146 @@ mod pillar {
 /// A minimal port of [readr 2.1.4](https://readr.tidyverse.org/) by Posit
 pub mod readr {
     use super::*;
+    use arrow::ipc::Decimal;
     use pillar::to_pillar;
     use pillar::PillarRecordBatch;
 
-    pub fn read_delim(file: &str) -> PillarRecordBatch {
-        // First download then read the file if there is a url in the file path
+    pub fn read_delim(file: &str, delim: &str) -> PillarRecordBatch {
+        //! `read_csv()` and `read_tsv()` are special cases of the more general `read_delim()`.
+        //! They're useful for reading the most common types of flat file data, comma separated values and tab separated values, respectively.
+        //! read_csv2() uses ; for the field separator and , for the decimal point. This format is common in some European countries.
+        //! # Arguments
+        //! #### `file`
+        //!
+        //! Either a path to a file, a connection, or literal data (either a single string or a raw vector).
+        //! Files ending in `.gz`, `.bz2`, `.xz`, or `.zip` will be automatically uncompressed. Files starting with `http://`, `https://`, `ftp://`, or `ftps://` will be automatically downloaded. Remote `gz` files can also be automatically downloaded and decompressed.
+        //! Literal data is most useful for examples and tests. To be recognised as literal data, the input must be either wrapped with I(), be a string containing at least one new line, or be a vector containing at least one string with a new line.
+        //!
+        //! #### `delim`
+        //!
+        //! Single character used to separate fields within a record.
+        //!
+        //! #### `escape_backslash`
+        //!
+        //! Does the file use backslashes to escape special characters? This is more general than escape_double as backslashes can be used to escape the delimiter character, the quote character, or to add special characters like \\n.
+        //!
+        //! #### `escape_double`
+        //! Does the file escape quotes by doubling them? i.e. If this option is TRUE, the value """" represents a single quote, \".
+        //!
+        //! #### col_names
+        //! Either TRUE, FALSE or a character vector of column names.
+        //!
+        //! If TRUE, the first row of the input will be used as the column names, and will not be included in the data frame. If FALSE, column names will be generated automatically: X1, X2, X3 etc.
+        //!
+        //! If col_names is a character vector, the values will be used as the names of the columns, and the first row of the input will be read into the first row of the output data frame.
+        //!
+        //! Missing (NA) column names will generate a warning, and be filled in with dummy names ...1, ...2 etc. Duplicate column names will generate a warning and be made unique, see name_repair to control how this is done.
+        //!
+        //! #### col_types
+        //! One of NULL, a cols() specification, or a string. See vignette("readr") for more details.
+        //!
+        //! If NULL, all column types will be inferred from guess_max rows of the input, interspersed throughout the file. This is convenient (and fast), but not robust. If the guessed types are wrong, you'll need to increase guess_max or supply the correct types yourself.
+        //!
+        //! Column specifications created by list() or cols() must contain one column specification for each column. If you only want to read a subset of the columns, use cols_only().
+        //!
+        //! Alternatively, you can use a compact string representation where each character represents one column:
+        //!
+        //! c = character
+        //!
+        //! i = integer
+        //!
+        //! n = number
+        //!
+        //! d = double
+        //!
+        //! l = logical
+        //!
+        //! f = factor
+        //!
+        //! D = date
+        //!
+        //! T = date time
+        //!
+        //! t = time
+        //!
+        //! ? = guess
+        //!
+        //! _ or - = skip
+        //!
+        //! By default, reading a file without a column specification will print a message showing what readr guessed they were. To remove this message, set show_col_types = FALSE or set `options(readr.show_col_types = FALSE).
+        //!
+        //! #### col_select
+        //! Columns to include in the results. You can use the same mini-language as dplyr::select() to refer to the columns by name. Use c() to use more than one selection expression. Although this usage is less common, col_select also accepts a numeric column index. See ?tidyselect::language for full details on the selection language.
+        //!
+        //! #### id
+        //! The name of a column in which to store the file path. This is useful when reading multiple input files and there is data in the file paths, such as the data collection date. If NULL (the default) no extra column is created.
+        //!
+        //! #### locale
+        //! The locale controls defaults that vary from place to place. The default locale is US-centric (like R), but you can use locale() to create your own locale that controls things like the default time zone, encoding, decimal mark, big mark, and day/month names.
+        //!
+        //! #### na
+        //! Character vector of strings to interpret as missing values. Set this option to character() to indicate no missing values.
+        //!
+        //! #### comment
+        //! A string used to identify comments. Any text after the comment characters will be silently ignored.
+        //!
+        //! #### trim_ws
+        //! Should leading and trailing whitespace (ASCII spaces and tabs) be trimmed from each field before parsing it?
+        //!
+        //! #### skip
+        //! Number of lines to skip before reading data. If comment is supplied any commented lines are ignored after skipping.
+        //!
+        //! #### n_max
+        //! Maximum number of lines to read.
+        //!
+        //! #### guess_max
+        //! Maximum number of lines to use for guessing column types. Will never use more than the number of lines read. See vignette("column-types", package = "readr") for more details.
+        //!
+        //! #### name_repair
+        //! Handling of column names. The default behaviour is to ensure column names are "unique". Various repair strategies are supported:
+        //!
+        //! "minimal": No name repair or checks, beyond basic existence of names.
+        //!
+        //! "unique" (default value): Make sure names are unique and not empty.
+        //!
+        //! "check_unique": no name repair, but check they are unique.
+        //!
+        //! "universal": Make the names unique and syntactic.
+        //!
+        //! A function: apply custom name repair (e.g., name_repair = make.names for names in the style of base R).
+        //!
+        //! A purrr-style anonymous function, see rlang::as_function().
+        //!
+        //! This argument is passed on as repair to vctrs::vec_as_names(). See there for more details on these terms and the strategies used to enforce them.
+        //!
+        //! #### num_threads
+        //! The number of processing threads to use for initial parsing and lazy reading of data. If your data contains newlines within fields the parser should automatically detect this and fall back to using one thread only. However if you know your file has newlines within quoted fields it is safest to set num_threads = 1 explicitly.
+        //!
+        //! #### progress
+        //! Display a progress bar? By default it will only display in an interactive session and not while knitting a document. The automatic progress bar can be disabled by setting option readr.show_progress to FALSE.
+        //!
+        //! #### show_col_types
+        //! If FALSE, do not show the guessed column types. If TRUE always show the column types, even if they are supplied. If NULL (the default) only show the column types if they are not explicitly supplied by the col_types argument.
+        //!
+        //! #### skip_empty_rows
+        //! Should blank rows be ignored altogether? i.e. If this option is TRUE then blank rows will not be represented at all. If it is FALSE then they will be represented by NA values in all the columns.
+        //! # Examples
+        //! ```rust
+        //! # read local csv
+        //! read_csv(readr_example("mtcars.csv"))
+        //! # read csv from zip
+        //!read_csv(readr_example("mtcars.csv.zip"))
+        //! # read csv from bz2
+        //!read_csv(readr_example("mtcars.csv.bz2"))
+        //! # read csv from url
+        //!read_csv("https://github.com/tidyverse/readr/raw/main/inst/extdata/mtcars.csv")
+        //! ```
         let url_result = Url::parse(file);
+        // make sure the delim is a single character in length
+        let delim_bytes: u8 = match delim.len() {
+            1 => delim.as_bytes()[0],
+            _ => panic!("delim must be a single character"),
+        };
         // make a temp dir
         let temp_dir = TempDir::new().unwrap();
         let tmp_file_path = temp_dir.path().join("tmp_ylr.csv");
@@ -872,23 +1006,22 @@ pub mod readr {
         };
         let schema = reader::infer_schema_from_files(
             &[file_path.to_str().unwrap().to_owned()],
-            44,
+            delim_bytes,
             Some(1000),
             true,
         );
         let schema_data_types = reader::infer_schema_from_files(
             &[file_path.to_str().unwrap().to_owned()],
-            44,
+            delim_bytes,
             Some(1000),
             true,
         );
-
         let file_open = File::open(file_path).unwrap();
         let mut reader = reader::Reader::new(
             file_open,
             Arc::new(schema.expect("Schema should be infered")),
             true,
-            Some(44),
+            Some(delim_bytes),
             1024,
             None,
             None,
@@ -901,21 +1034,98 @@ pub mod readr {
     }
 }
 
+/// The core ylr database functions
+pub mod ylrdb {
+    use super::*;
+    use arrow2::io::ipc;
+    use arrow2::io::ipc::read::FileReader;
+    use arrow2::io::ipc::{
+        read::read_file_metadata,
+        write::{FileWriter, WriteOptions},
+    };
+    use std::fs::File;
+    use std::io::BufReader;
+    use std::io::{self, Write};
+    use std::sync::Arc;
+    use tar::Archive;
+    use tempdir::TempDir;
+
+    pub fn ylr_info() {
+        // https://fs.r-lib.org/reference/dir_ls.html
+    }
+    /// new_ylr creates a new ylr database
+    pub fn new_ylr(db_name: &str) {
+        //! Example
+        //! ```rust
+        //! use ylr::std::connect_ylr;
+        //! let con = connect_ylr("main.ylr");
+        //! ```
+        println!("Hello, world!");
+    }
+    pub fn connect_ylr(db_name: &str) {
+        //! Example
+        //! ```rust
+        //! use ylr::std::connect_ylr;
+        //! let con = connect_ylr("main.ylr");
+        //! ```
+        println!("Hello, world!");
+    }
+
+    pub fn write_ylr(table: &RecordBatch, ylr_file: &str, table_name: &str) {
+        println!("Hello, world!");
+    }
+    pub fn read_ylr(ylr_file: &str, table_name: &str) {
+        // make a tmp dir
+        let temp_dir = TempDir::new("unpack").unwrap();
+        let tmp_file_path = temp_dir.path().join("tmp.arrow");
+        let file = File::open(ylr_file).unwrap();
+        let mut ar = Archive::new(file);
+        for (i, file) in ar.entries().unwrap().enumerate() {
+            let mut file = file.unwrap();
+            if file
+                .path()
+                .expect("Could not unwrap file path")
+                .display()
+                .to_string()
+                == table_name
+            {
+                //println!("File {}:{}", i, file.path().unwrap().display());
+                file.unpack_in("junk")
+                    .expect("Could not unpack file in tmp_dir");
+            }
+        }
+
+        let mut reader = File::open(&tmp_file_path).expect("Could not find file");
+        let metadata = read_file_metadata(&mut reader).expect("Could not read metadata");
+        let mut reader = FileReader::new(reader, metadata, None, None);
+        let row1 = reader.next().unwrap(); // [[-1, 1], [1, -1]]
+        let row2 = reader.next().unwrap(); // [[-1, 1], [1, -1]]
+        let mut reader = reader.into_inner();
+        println!("{:?}", reader);
+    }
+    pub fn rm_ylr(ylr_file: &str, table_name: &str) {}
+
+    pub fn export_ylr_to_dir(ylr_file: &str, dir: &str) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use pillar::to_pillar;
     use readr::read_delim;
+    use ylrdb::*;
 
     #[test]
     fn test_read_delim() {
         let a = readr::read_delim(
             "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv",
+            ",",
         );
         print!("{}", a);
-        let a = readr::read_delim("data/str.csv");
+        let a = readr::read_delim("data/str.csv", ",");
         print!("{}", a)
     }
+    #[test]
     fn test_to_tibble() {
         let id_array = Int64Array::from(vec![
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
@@ -927,7 +1137,8 @@ mod tests {
         let tibble = to_pillar(record_batch);
         print!("{}", tibble);
     }
-    fn test_download() {
-        let url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/penguins.csv";
+    #[test]
+    fn test_read_ylr() {
+        read_ylr("main.tar", "test.arrow")
     }
 }

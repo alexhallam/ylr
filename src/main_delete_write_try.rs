@@ -13,7 +13,6 @@ use std::io::prelude::*;
 use std::io::{BufRead, BufReader};
 use std::io::{BufWriter, Write};
 use std::sync::Arc;
-std::fs::read
 
 fn main() {
     // table1
@@ -89,5 +88,4 @@ fn main() {
     // println!("{:?}", batch_read);
 
     // read the ipc data that starts after table_name2 into an arrow::record_batch::RecordBatch
-    
 }
